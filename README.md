@@ -1,73 +1,111 @@
-# React + TypeScript + Vite
+# Stardew Life RPG
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+星露谷物语风格的日常RPG游戏化工具，将你的日常生活变成一场冒险。
 
-Currently, two official plugins are available:
+## 启动方式
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+# 安装依赖
+npm install
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# 启动开发服务器
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+浏览器打开 `http://localhost:5173/` 即可使用。
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## 功能模块
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 主页
+创建角色，输入名字后开始冒险。已有角色会显示欢迎页和快捷入口。
+
+### 仪表盘
+- 经验值和等级进度条
+- 六维属性面板：学习力、健康度、社交力、心情值、自制力、体力
+- 趋势分析图表：心情趋势、睡眠时长、饮食分布、专注时长、心情vs睡眠
+
+### 任务面板
+- 每日任务 / 阶段任务 两个标签页
+- 创建、编辑、删除任务，支持子任务勾选
+- 4 套预设模板：生存模式、轻型学习日、充电休息日、火力全开日
+- 点击「新的一天」重置每日任务
+
+### 番茄钟
+- 倒计时专注模式（默认25分钟）
+- 倒计时休息模式（默认5分钟）
+- 正计时模式（不限时，点了开始往上数）
+- 可自定义时长
+- 完成后自动获得经验和金币
+
+### 日常记录
+- 今日心情：1-5 星评分 + 7 种情绪标签
+- 睡眠记录：入睡/起床时间 + 质量评分
+- 饮食记录：早餐/午餐/晚餐/零食，健康评级（健康/普通/享受）
+- 今日活动：自由添加
+- 今日社交：5 种社交活动复选框（和社交力属性挂钩）
+- 今日笔记：自由书写
+- 历史记录查看
+
+### 成就系统
+26 个成就，分为 6 个分类：
+- **任务**（4个）：初出茅庐、任务粉碎机、任务收割者、全勤月
+- **番茄**（5个）：番茄学徒、番茄农场主、番茄大师、拼命三郎、学神降临
+- **习惯**（2个）：七日连勤、月之守护
+- **生活**（5个）：早起鸟、早起成习、规律进食、早睡挑战、阳光心情
+- **成长**（4个）：小有成就、勇者之路、小富翁、全面发展
+- **消费**（6个）：首次购物、吃货认证、饮品品鉴师、玩心不改、挥金如土、消费达人
+
+成就分三级：银星 / 金星 / 铱星，达成后实时弹窗通知。
+
+### 每日结算
+- 自动汇总当天数据：任务、番茄、饮食、睡眠、心情
+- 显示 XP 和金币收入
+- 属性变化明细（绿色增/红色减）
+- 每日衰减和事件惩罚
+- 连续打卡奖励（3天/7天/全勤）
+- 最近7天概览
+
+### 背包 & 商城
+- 用金币兑换奖励物品
+- 饮食区：小零食、水果、夜宵、甜品、大餐、咖啡、饮品
+- 娱乐区：摸鱼、游戏、午休、看剧、睡懒觉、小礼物、摆烂、出游、自由日
+
+## 属性系统
+
+| 属性 | 获取方式 |
+|------|---------|
+| 学习力 | 完成番茄钟 +0.1 |
+| 健康度 | 三餐全健康 +0.2 |
+| 社交力 | 社交活动复选框（发信息/打电话/出门/课堂/老师） |
+| 心情值 | 心情≥4星时 +0.1 |
+| 自制力 | 日记满写 +0.05、全天任务完成 +0.1（结算时） |
+| 体力 | 睡眠质量≥4时 +0.3 |
+
+每日衰减：体力 -0.3、心情 -0.1、自制力 -0.05
+惩罚事件：熬夜（体力-0.5 健康-0.1）、漏餐（体力-0.2）
+
+属性达到 Lv.3/5/8 时解锁增益效果（XP加成、金币加成、衰减减免等）。
+
+## 技术栈
+
+- React 19 + TypeScript
+- Vite 8
+- React Router DOM 7
+- Dexie.js（IndexedDB 本地数据库）
+- Recharts（图表）
+- 星露谷原版像素素材
+
+## 数据存储
+
+所有数据存储在浏览器的 IndexedDB 中，完全离线可用，无需登录。清除浏览器数据会导致数据丢失。
+
+## PWA 安装
+
+项目已配置 PWA 支持，构建后可安装到桌面：
+
+```bash
+npm run build
+npm run preview
 ```
+
+在 Chrome 地址栏右侧点击安装图标即可。
