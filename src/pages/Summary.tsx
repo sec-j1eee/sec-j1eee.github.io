@@ -64,10 +64,11 @@ export default function Summary() {
         .reduce((sum, s) => sum + s.duration, 0) / 60
     );
 
-    const xpEarned = todayQuests.reduce((sum, q) => sum + q.xpReward, 0) +
-      todaySessions.filter(s => s.type === 'focus').length * 30;
-    const goldEarned = todayQuests.reduce((sum, q) => sum + q.goldReward, 0) +
-      todaySessions.filter(s => s.type === 'focus').length * 5;
+    const questXP = todayQuests.reduce((sum, q) => sum + q.xpReward, 0);
+    const questGold = todayQuests.reduce((sum, q) => sum + q.goldReward, 0);
+    const pomoCount = todaySessions.filter(s => s.type === 'focus').length;
+    const xpEarned = questXP + pomoCount * XP_TABLE.POMODORO_FOCUS;
+    const goldEarned = questGold + pomoCount * GOLD_TABLE.POMODORO_FOCUS;
 
     const mealCounts = todayLog
       ? { total: todayLog.meals.length, healthy: todayLog.meals.filter(m => m.healthRating === 'healthy').length }
@@ -91,12 +92,7 @@ export default function Summary() {
       focusMinutes,
       xpEarned,
       goldEarned,
-      statsChanges: {
-        study: Math.min(1, todaySessions.filter(s => s.type === 'focus').length * 0.1),
-        health: mealCounts.healthy * 0.1,
-        willpower: todayQuests.length * 0.05,
-        mood: todayLog?.mood && todayLog.mood >= 4 ? 0.1 : 0,
-      },
+      statsChanges: {},
       mealsHealthy: mealCounts.healthy,
       mealsTotal: mealCounts.total,
       sleepHours,
