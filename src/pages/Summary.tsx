@@ -101,11 +101,11 @@ export default function Summary() {
       highlights,
     };
 
-    const isFirstToday = !(await db.dailySummaries.where('date').equals(today).first());
+    const existingSummary = await db.dailySummaries.where('date').equals(today).first();
+    const isFirstToday = !existingSummary;
 
-    const existingId = summary?.id;
-    if (existingId) {
-      data.id = existingId;
+    if (existingSummary) {
+      data.id = existingSummary.id;
       await db.dailySummaries.put(data);
     } else {
       const id = await db.dailySummaries.add(data);
