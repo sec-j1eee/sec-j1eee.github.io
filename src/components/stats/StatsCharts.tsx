@@ -120,13 +120,13 @@ export function MealPieChart() {
 
   const data = [
     { name: '健康', value: healthy },
-    { name: '一般', value: normal },
-    { name: '放纵', value: indulgent },
+    { name: '普通', value: normal },
+    { name: '享受', value: indulgent },
   ];
 
   return (
     <div className="chart-container">
-      <div className="pixel-label" style={{ marginBottom: 8 }}>🍽️ 饮食健康分布（近30天）</div>
+      <div className="pixel-label" style={{ marginBottom: 8 }}>🍽️ 饮食分布（近30天）</div>
       <ResponsiveContainer width="100%" height={200}>
         <PieChart>
           <Pie data={data} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={4} dataKey="value">
