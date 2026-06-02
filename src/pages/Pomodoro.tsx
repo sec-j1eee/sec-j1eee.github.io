@@ -31,20 +31,20 @@ export default function Pomodoro() {
 
   // 页面切回来时恢复计时器
   useEffect(() => {
-    if (!liveTimer) return;
-    const t = liveTimer;
-    liveTimer = null;
+    if (!liveTimer || liveTimer.type === 'idle') return;
+    const t = { ...liveTimer };
     const now = Date.now();
     if (t.type === 'countup') {
       setElapsed(Math.floor((now - t.startTime) / 1000));
       startCountUpInternal();
     } else {
       const remaining = Math.max(0, Math.floor((t.endTime - now) / 1000));
+      if (remaining <= 0) { liveTimer = null; return; }
       setTimeLeft(remaining);
       setTaskName(t.taskName);
       if (t.type === 'focus') setFocusDuration(t.focusDur);
       if (t.type === 'break') setBreakDuration(t.breakDur);
-      if (remaining > 0) startTimerInternal(t.type);
+      startTimerInternal(t.type as 'focus' | 'break');
     }
   }, []);
 
@@ -55,6 +55,7 @@ export default function Pomodoro() {
     startTimeRef.current = Date.now() - ((type === 'focus' ? focusDuration * 60 : breakDuration * 60) - timeLeft);
     intervalRef.current = window.setInterval(() => {
       setTimeLeft(prev => {
+        liveTimer = { type, endTime: Date.now() + prev * 1000, startTime: startTimeRef.current, focusDur: focusDuration, breakDur: breakDuration, taskName };
         if (prev <= 1) {
           clearInterval(intervalRef.current!);
           if (type === 'focus') {
@@ -79,7 +80,9 @@ export default function Pomodoro() {
     setTimerState('countup');
     startTimeRef.current = Date.now() - elapsed * 1000;
     intervalRef.current = window.setInterval(() => {
-      setElapsed(Math.floor((Date.now() - startTimeRef.current) / 1000));
+      const e = Math.floor((Date.now() - startTimeRef.current) / 1000);
+      setElapsed(e);
+      liveTimer = { type: 'countup', endTime: 0, startTime: startTimeRef.current, focusDur: focusDuration, breakDur: breakDuration, taskName };
     }, 200);
   }
 
