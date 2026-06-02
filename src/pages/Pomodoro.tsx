@@ -8,6 +8,9 @@ type TimerState = 'idle' | 'focus' | 'break' | 'countup';
 
 const DEFAULT_FOCUS = 25 * 60;
 
+// 模块级：导航切换不丢失
+let liveTimer: { type: TimerState; endTime: number; startTime: number; focusDur: number; breakDur: number; taskName: string } | null = null;
+
 export default function Pomodoro() {
   const { state, addXP, addGold, updateStats } = useGame();
   const [timerState, setTimerState] = useState<TimerState>('idle');
@@ -26,49 +29,82 @@ export default function Pomodoro() {
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, []);
 
-  async function loadStats() {
-    setTodayCount(await getTodaysPomodoroCount());
+  // 页面切回来时恢复计时器
+  useEffect(() => {
+    if (!liveTimer) return;
+    const t = liveTimer;
+    liveTimer = null;
+    const now = Date.now();
+    if (t.type === 'countup') {
+      setElapsed(Math.floor((now - t.startTime) / 1000));
+      startCountUpInternal();
+    } else {
+      const remaining = Math.max(0, Math.floor((t.endTime - now) / 1000));
+      setTimeLeft(remaining);
+      setTaskName(t.taskName);
+      if (t.type === 'focus') setFocusDuration(t.focusDur);
+      if (t.type === 'break') setBreakDuration(t.breakDur);
+      if (remaining > 0) startTimerInternal(t.type);
+    }
+  }, []);
 
-    const sessions = await db.pomodoroSessions
-      .filter(s => s.type === 'focus')
-      .toArray();
-    setTotalFocusSec(sessions.reduce((sum, s) => sum + s.duration, 0));
-  }
-
-  const startTimer = useCallback((type: 'focus' | 'break') => {
+  // 内部启动函数（不计入依赖）
+  function startTimerInternal(type: 'focus' | 'break') {
     if (intervalRef.current) clearInterval(intervalRef.current);
-    const duration = type === 'focus' ? focusDuration * 60 : breakDuration * 60;
     setTimerState(type);
-    setTimeLeft(duration);
-    startTimeRef.current = Date.now();
-
+    startTimeRef.current = Date.now() - ((type === 'focus' ? focusDuration * 60 : breakDuration * 60) - timeLeft);
     intervalRef.current = window.setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 1) {
           clearInterval(intervalRef.current!);
           if (type === 'focus') {
-            completeFocusSession(duration);
+            completeFocusSession(focusDuration * 60);
             setTimerState('break');
+            setTimeLeft(breakDuration * 60);
+            liveTimer = { type: 'break', endTime: Date.now() + breakDuration * 60 * 1000, startTime: Date.now(), focusDur: focusDuration, breakDur: breakDuration, taskName };
             return breakDuration * 60;
           } else {
             setTimerState('idle');
+            liveTimer = null;
             return focusDuration * 60;
           }
         }
         return prev - 1;
       });
     }, 1000);
-  }, [focusDuration, breakDuration]);
+  }
+
+  function startCountUpInternal() {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    setTimerState('countup');
+    startTimeRef.current = Date.now() - elapsed * 1000;
+    intervalRef.current = window.setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startTimeRef.current) / 1000));
+    }, 200);
+  }
+
+  async function loadStats() {
+    setTodayCount(await getTodaysPomodoroCount());
+    const sessions = await db.pomodoroSessions.filter(s => s.type === 'focus').toArray();
+    setTotalFocusSec(sessions.reduce((sum, s) => sum + s.duration, 0));
+  }
+
+  const startTimer = useCallback((type: 'focus' | 'break') => {
+    const duration = type === 'focus' ? focusDuration * 60 : breakDuration * 60;
+    setTimeLeft(duration);
+    liveTimer = { type, endTime: Date.now() + duration * 1000, startTime: Date.now(), focusDur: focusDuration, breakDur: breakDuration, taskName };
+    startTimerInternal(type);
+  }, [focusDuration, breakDuration, taskName]);
+
+  const startCountUp = useCallback(() => {
+    setElapsed(0);
+    liveTimer = { type: 'countup', endTime: 0, startTime: Date.now(), focusDur: focusDuration, breakDur: breakDuration, taskName };
+    startCountUpInternal();
+  }, []);
 
   async function completeFocusSession(duration: number) {
     const today = todayStr();
-    const session: PomodoroSession = {
-      duration,
-      type: 'focus',
-      completedAt: new Date(),
-      date: today,
-      taskName: taskName || undefined,
-    };
+    const session: PomodoroSession = { duration, type: 'focus', completedAt: new Date(), date: today, taskName: taskName || undefined };
     await db.pomodoroSessions.add(session);
     await addXP(XP_TABLE.POMODORO_FOCUS);
     await addGold(GOLD_TABLE.POMODORO_FOCUS);
@@ -76,30 +112,16 @@ export default function Pomodoro() {
     await loadStats();
   }
 
-  const startCountUp = useCallback(() => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    setTimerState('countup');
-    setElapsed(0);
-    startTimeRef.current = Date.now();
-
-    intervalRef.current = window.setInterval(() => {
-      setElapsed(Math.floor((Date.now() - startTimeRef.current) / 1000));
-    }, 1000);
-  }, []);
-
   function stopTimer() {
     if (intervalRef.current) clearInterval(intervalRef.current);
+    liveTimer = null;
     if (timerState === 'focus') {
-      const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
-      if (elapsed >= 60) {
-        completeFocusSession(elapsed);
-      }
+      const sec = Math.floor((Date.now() - startTimeRef.current) / 1000);
+      if (sec >= 60) completeFocusSession(sec);
     }
     if (timerState === 'countup') {
-      const totalElapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
-      if (totalElapsed >= 60) {
-        completeFocusSession(totalElapsed);
-      }
+      const sec = Math.floor((Date.now() - startTimeRef.current) / 1000);
+      if (sec >= 60) completeFocusSession(sec);
     }
     setTimerState('idle');
     setTimeLeft(focusDuration * 60);
@@ -112,13 +134,6 @@ export default function Pomodoro() {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   }
 
-  function getTimerLabel(): string {
-    if (timerState === 'focus') return '专注中...';
-    if (timerState === 'break') return '休息一下';
-    if (timerState === 'countup') return '正计时中...';
-    return '准备开始';
-  }
-
   const displayTime = timerState === 'countup' ? formatTime(elapsed) : formatTime(timeLeft);
   const totalFocusMin = Math.floor(totalFocusSec / 60);
   const progress = timerState === 'idle' ? 0 :
@@ -128,10 +143,7 @@ export default function Pomodoro() {
   if (!state.player) {
     return (
       <div className="page">
-        <div className="empty-state">
-          <div className="empty-state-icon">🍅</div>
-          <div className="pixel-title">请先创建角色</div>
-        </div>
+        <div className="empty-state"><div className="empty-state-icon">🍅</div><div className="pixel-title">请先创建角色</div></div>
       </div>
     );
   }
@@ -141,108 +153,60 @@ export default function Pomodoro() {
       <div className="page-header">
         <div>
           <div className="pixel-title" style={{ marginBottom: 4 }}>番茄钟</div>
-          <div className="pixel-subtitle">
-            今日 {todayCount} 个 · 累计 {totalFocusMin} 分钟
-          </div>
+          <div className="pixel-subtitle">今日 {todayCount} 个 · 累计 {totalFocusMin} 分钟</div>
         </div>
       </div>
-
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
-        {/* 计时器主体 */}
         <div className="pixel-panel" style={{
-          width: '100%', maxWidth: 560,
-          textAlign: 'center',
-          padding: '36px 56px',
-          background: timerState === 'focus' ? '#1a2a3a' :
-            timerState === 'break' ? '#2a3a1a' :
-            timerState === 'countup' ? '#3a2a1a' : undefined,
+          width: '100%', maxWidth: 560, textAlign: 'center', padding: '36px 56px',
+          background: timerState === 'focus' ? '#1a2a3a' : timerState === 'break' ? '#2a3a1a' : timerState === 'countup' ? '#3a2a1a' : undefined,
         }}>
           <div style={{
-            fontSize: 60,
-            fontFamily: 'var(--font-pixel)',
-            color: timerState === 'focus' ? '#6bceff' :
-              timerState === 'break' ? '#4caf50' :
-              timerState === 'countup' ? '#f0c75e' :
-                'var(--color-text)',
-            marginBottom: 8,
-            transition: 'color 0.3s',
-          }}>
-            {displayTime}
-          </div>
-
+            fontSize: 60, fontFamily: 'var(--font-pixel)',
+            color: timerState === 'focus' ? '#6bceff' : timerState === 'break' ? '#4caf50' : timerState === 'countup' ? '#f0c75e' : 'var(--color-text)',
+            marginBottom: 8, transition: 'color 0.3s',
+          }}>{displayTime}</div>
           <div className="pixel-progress" style={{ marginBottom: 12 }}>
-            <div
-              className={`pixel-progress-fill ${timerState === 'focus' ? 'xp' : timerState === 'countup' ? 'stamina' : 'hp'}`}
-              style={{ width: `${progress * 100}%` }}
-            />
+            <div className={`pixel-progress-fill ${timerState === 'focus' ? 'xp' : timerState === 'countup' ? 'stamina' : 'hp'}`}
+              style={{ width: `${progress * 100}%` }} />
           </div>
-
           <div style={{
-            fontFamily: 'var(--font-pixel)',
-            fontSize: 11,
-            color: timerState === 'focus' ? '#6bceff' :
-              timerState === 'break' ? '#4caf50' :
-              timerState === 'countup' ? '#f0c75e' :
-                'var(--color-text-light)',
+            fontFamily: 'var(--font-pixel)', fontSize: 11,
+            color: timerState === 'focus' ? '#6bceff' : timerState === 'break' ? '#4caf50' : timerState === 'countup' ? '#f0c75e' : 'var(--color-text-light)',
             marginBottom: 16,
           }}>
-            {getTimerLabel()}
-            {timerState === 'focus' && taskName && (
-              <span style={{ display: 'block', fontSize: 9, marginTop: 4, opacity: 0.7 }}>
-                📖 {taskName}
-              </span>
-            )}
+            {timerState === 'focus' ? '专注中...' : timerState === 'break' ? '休息一下' : timerState === 'countup' ? '正计时中...' : '准备开始'}
+            {timerState === 'focus' && taskName && <span style={{ display: 'block', fontSize: 9, marginTop: 4, opacity: 0.7 }}>📖 {taskName}</span>}
           </div>
-
           <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
             {timerState === 'idle' ? (
               <>
-                <button className="pixel-btn primary" onClick={() => startTimer('focus')}>
-                  ▶ 开始专注
+                <button className="pixel-btn primary" onClick={() => startTimer('focus')}>▶ 开始专注</button>
+                <button className="pixel-btn" onClick={() => startTimer('break')} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <img src="/assets/sdv/icons/break.png" alt="" style={{ width: 22, height: 22, imageRendering: 'pixelated' }} />休息
                 </button>
-                <button className="pixel-btn" onClick={() => startTimer('break')}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <img src="/assets/sdv/icons/break.png" alt=""
-                    style={{ width: 22, height: 22, imageRendering: 'pixelated' }} />
-                  休息
-                </button>
-                <button className="pixel-btn" onClick={startCountUp}
-                  style={{ background: '#8b6914', borderColor: '#6b4f3c' }}>
-                  ▲ 正计时
-                </button>
+                <button className="pixel-btn" onClick={startCountUp} style={{ background: '#8b6914', borderColor: '#6b4f3c' }}>▲ 正计时</button>
               </>
             ) : (
-              <button className="pixel-btn danger" onClick={stopTimer}>
-                ⏹ 停止
-              </button>
+              <button className="pixel-btn danger" onClick={stopTimer}>⏹ 停止</button>
             )}
           </div>
         </div>
-
-        {/* 设置 */}
         {timerState === 'idle' && (
           <div className="pixel-panel" style={{ width: '100%', maxWidth: 560 }}>
             <div className="pixel-title" style={{ marginBottom: 12 }}>设置</div>
-
             <div className="form-group" style={{ marginBottom: 12 }}>
               <label className="pixel-label">任务名称（可选）</label>
-              <input className="pixel-input" value={taskName}
-                onChange={e => setTaskName(e.target.value)}
-                placeholder="当前正在做什么？" />
+              <input className="pixel-input" value={taskName} onChange={e => setTaskName(e.target.value)} placeholder="当前正在做什么？" />
             </div>
-
             <div style={{ display: 'flex', gap: 16 }}>
               <div className="form-group" style={{ flex: 1 }}>
                 <label className="pixel-label">专注时长（分钟）</label>
-                <input className="pixel-input" type="number" value={focusDuration}
-                  onChange={e => setFocusDuration(Number(e.target.value))}
-                  min={1} max={120} />
+                <input className="pixel-input" type="number" value={focusDuration} onChange={e => setFocusDuration(Number(e.target.value))} min={1} max={120} />
               </div>
               <div className="form-group" style={{ flex: 1 }}>
                 <label className="pixel-label">休息时长（分钟）</label>
-                <input className="pixel-input" type="number" value={breakDuration}
-                  onChange={e => setBreakDuration(Number(e.target.value))}
-                  min={1} max={30} />
+                <input className="pixel-input" type="number" value={breakDuration} onChange={e => setBreakDuration(Number(e.target.value))} min={1} max={30} />
               </div>
             </div>
           </div>
