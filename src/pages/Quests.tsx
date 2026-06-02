@@ -168,25 +168,41 @@ export default function Quests() {
       {/* 常驻：模板选择 */}
       {tab === 'daily' && dailyQuests.length === 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {PRESET_TEMPLATES.map(tmpl => (
-            <div key={tmpl.id} className="pixel-panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: 'var(--font-pixel)', fontSize: 13, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <img src={tmpl.icon} alt="" style={{ width: 22, height: 22, imageRendering: 'pixelated' }} />
-                  {tmpl.name}
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--color-text-light)', marginBottom: 4 }}>{tmpl.description}</div>
-                <div style={{ display: 'flex', gap: 12, fontSize: 10, fontFamily: 'var(--font-pixel)', color: 'var(--color-text-light)' }}>
-                  <span>⭐ {tmpl.quests.reduce((s, q) => s + q.xpReward, 0)}XP</span>
-                  <span>🪙 {tmpl.quests.reduce((s, q) => s + q.goldReward, 0)}G</span>
-                  <span>📋 {tmpl.quests.length}项任务</span>
+          {PRESET_TEMPLATES.map(tmpl => {
+            const totalXP = tmpl.quests.reduce((s, q) => s + q.xpReward, 0);
+            const totalGold = tmpl.quests.reduce((s, q) => s + q.goldReward, 0);
+            return (
+              <div key={tmpl.id} className="pixel-panel">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontFamily: 'var(--font-pixel)', fontSize: 13, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <img src={tmpl.icon} alt="" style={{ width: 22, height: 22, imageRendering: 'pixelated' }} />
+                      {tmpl.name}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--color-text-light)', marginBottom: 6 }}>{tmpl.description}</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
+                      {tmpl.quests.map(q => (
+                        <span key={q.title} className="pixel-badge" style={{ fontSize: 9, background: '#e8dcc8', color: 'var(--color-text)' }}>
+                          {q.title}
+                        </span>
+                      ))}
+                    </div>
+                    <div style={{ display: 'flex', gap: 16, fontSize: 10, fontFamily: 'var(--font-pixel)', color: 'var(--color-text-light)' }}>
+                      <span>⭐ {totalXP}XP</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <img src="/assets/sdv/icons/coin.png" alt="" style={{ width: 12, height: 12, imageRendering: 'pixelated' }} />
+                        {totalGold}G
+                      </span>
+                      <span>📋 {tmpl.quests.length}项</span>
+                    </div>
+                  </div>
+                  <button className="pixel-btn primary" onClick={() => loadTemplate(tmpl.id)} style={{ flexShrink: 0, marginLeft: 16 }}>
+                    选择
+                  </button>
                 </div>
               </div>
-              <button className="pixel-btn primary" onClick={() => loadTemplate(tmpl.id)} style={{ flexShrink: 0, marginLeft: 16 }}>
-                选择
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
