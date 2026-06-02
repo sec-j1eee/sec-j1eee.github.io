@@ -36,6 +36,7 @@ export default function Pomodoro() {
   }
 
   const startTimer = useCallback((type: 'focus' | 'break') => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
     const duration = type === 'focus' ? focusDuration * 60 : breakDuration * 60;
     setTimerState(type);
     setTimeLeft(duration);
@@ -76,6 +77,7 @@ export default function Pomodoro() {
   }
 
   const startCountUp = useCallback(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
     setTimerState('countup');
     setElapsed(0);
     startTimeRef.current = Date.now();
