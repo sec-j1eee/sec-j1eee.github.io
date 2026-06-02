@@ -1,6 +1,6 @@
 import Dexie, { type Table } from 'dexie';
 import { todayStr } from './models';
-import type { Player, Quest, PomodoroSession, DailyLog, Achievement, InventoryItem, DailySummary, Purchase } from './models';
+import type { Player, Quest, PomodoroSession, DailyLog, Achievement, InventoryItem, DailySummary, Purchase, UsageLog } from './models';
 
 export class GameDatabase extends Dexie {
   players!: Table<Player, number>;
@@ -11,6 +11,7 @@ export class GameDatabase extends Dexie {
   inventory!: Table<InventoryItem, number>;
   dailySummaries!: Table<DailySummary, number>;
   purchases!: Table<Purchase, number>;
+  usageLogs!: Table<UsageLog, number>;
 
   constructor() {
     super('StardewLifeRPG');
@@ -24,6 +25,7 @@ export class GameDatabase extends Dexie {
       inventory: '++id, name, type',
       dailySummaries: '++id, date',
       purchases: '++id, date, category',
+      usageLogs: '++id, date',
     });
   }
 }

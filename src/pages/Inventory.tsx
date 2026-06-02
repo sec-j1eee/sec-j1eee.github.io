@@ -83,6 +83,7 @@ export default function Inventory() {
   async function useItem(item: InventoryItem) {
     if (item.quantity <= 0) return;
     await db.inventory.update(item.id!, { quantity: item.quantity - 1 });
+    await db.usageLogs.add({ name: item.name, date: todayStr(), time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) });
     setActiveItem(item);
     await loadItems();
   }
@@ -134,6 +135,9 @@ export default function Inventory() {
           </div>
         ))}
       </div>
+
+      {/* 今日统计 */}
+      <DailyStats />
 
       <div style={{ textAlign: 'center', marginTop: 20 }}>
         <button className="pixel-btn" onClick={() => setShowShop(true)}>商城</button>
@@ -201,6 +205,33 @@ export default function Inventory() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function DailyStats() {
+  const [spent, setSpent] = useState(0);
+  const [used, setUsed] = useState(0);
+
+  useEffect(() => {
+    db.purchases.where('date').equals(todayStr()).toArray().then(ps => {
+      setSpent(ps.reduce((s, p) => s + p.price, 0));
+    });
+    db.usageLogs.where('date').equals(todayStr()).count().then(setUsed);
+  }, []);
+
+  if (spent === 0 && used === 0) return null;
+
+  return (
+    <div className="pixel-panel" style={{ marginTop: 16 }}>
+      <div className="pixel-subtitle" style={{ marginBottom: 8, fontSize: 14 }}>今日背包统计</div>
+      <div style={{ display: 'flex', gap: 24, fontSize: 13, fontFamily: 'var(--font-pixel)' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <img src="/assets/sdv/icons/coin.png" alt="" style={{ width: 16, height: 16, imageRendering: 'pixelated' }} />
+          消费 {spent}G
+        </span>
+        <span>🎒 使用 {used} 次</span>
+      </div>
     </div>
   );
 }

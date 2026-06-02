@@ -176,6 +176,13 @@ export function xpForLevel(level: number): number {
   return Math.floor(100 * Math.pow(level, 1.5));
 }
 
+export interface UsageLog {
+  id?: number;
+  name: string;
+  date: string;
+  time: string;
+}
+
 export interface Purchase {
   id?: number;
   name: string;
